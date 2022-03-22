@@ -7,6 +7,32 @@
 
 import SwiftUI
 
+struct FlagImage: View {
+    let flagName: String
+    
+    var body: some View {
+        Image(flagName, bundle: nil)
+            .renderingMode(.original)
+            .clipShape(Capsule())
+            .shadow(radius: 4)
+    }
+}
+
+struct ProminentModider: ViewModifier {
+    
+    func body(content: Content) -> some View {
+        content
+            .font(.largeTitle)
+            .foregroundColor(.blue)
+    }
+}
+
+extension View {
+    func makeProminent() -> some View {
+        modifier(ProminentModider())
+    }
+}
+
 struct ContentView: View {
     @State private var scoreTitle = ""
     @State private var showingAlert = false
@@ -14,6 +40,10 @@ struct ContentView: View {
     @State private var score = 0
     @State private var message = ""
     @State private var turnCount = 1
+    
+    @State private var spinningDegrees: [Double] = [0, 0, 0]
+    @State private var opacityArray: [Double] = [1, 1, 1]
+    @State private var scaleArray: [Double] = [1, 1, 1]
     
     private let maximumTurn = 8
     
@@ -45,13 +75,14 @@ struct ContentView: View {
                     
                     ForEach(0..<3) { number in
                         Button {
+                            handleAnimation(number)
                             buttonTapped(number)
                         } label: {
-                            Image(countries[number], bundle: nil)
-                                .renderingMode(.original)
-                                .clipShape(Capsule())
-                                .shadow(radius: 4)
+                            FlagImage(flagName: countries[number])
                         }
+                        .rotation3DEffect(.degrees(spinningDegrees[number]), axis: (x: 0, y: 1, z: 1))
+                        .opacity(opacityArray[number])
+                        .scaleEffect(scaleArray[number], anchor: .center)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -62,19 +93,24 @@ struct ContentView: View {
                 Spacer()
                 Spacer()
                 
-                Text("Your sroce is \(score)")
-                    .font(.title.bold())
-                    .foregroundColor(.white)
+                Text("Your score is \(score)")
+                    .makeProminent()
                 Spacer()
             }
             .padding()
         }.alert(scoreTitle, isPresented: $showingAlert) {
-            Button("Continue", action: shuffle)
+            Button("Continue") {
+                resetAnimation()
+                shuffle()
+            }
         } message: {
             Text(message)
         }
         .alert("Your total score is \(score)/\(maximumTurn)", isPresented: $reachMaxTurn) {
-            Button("Reset", action: reset)
+            Button("Reset") {
+                reset()
+                resetAnimation()
+            }
         }
     }
     
@@ -85,7 +121,7 @@ struct ContentView: View {
             message = "Your score is \(score)/\(turnCount)"
         } else {
             scoreTitle = "Wrong"
-            message = "That's the flag of\(countries[correctAnswers])!\nYour score is \(score)/\(turnCount)"
+            message = "That's the flag of \(countries[correctAnswers])!\nYour score is \(score)/\(turnCount)"
         }
         if turnCount < maximumTurn {
             turnCount += 1
@@ -93,6 +129,26 @@ struct ContentView: View {
             reachMaxTurn = true
         }
         showingAlert = true
+    }
+    
+    private func handleAnimation(_ number: Int) {
+        withAnimation {
+            for value in 0 ..< 3 {
+                if value != number {
+                    opacityArray[value] = 0.25
+                    scaleArray[value] = 0.75
+                }
+            }
+            spinningDegrees[number] = 360
+        }
+    }
+    
+    private func resetAnimation() {
+        withAnimation {
+            opacityArray = [1, 1, 1]
+            scaleArray = [1, 1, 1]
+            spinningDegrees = [0, 0, 0]
+        }
     }
     
     private func shuffle() {
